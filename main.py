@@ -1,113 +1,103 @@
-from math import log, e
-from file_manager import FileManager
-import chuck_norris
-
-# task 1
+from graphviz import Digraph
 
 
-def func(list_a, list_b):
-    return list_a[::2] + list_b[1::2]
+class Node:
+
+    def __init__(self, value=0, score=0, parent=None):
+        self.value = value
+        self.score = score
+        self.parent = parent
+        self.children = []
+
+    def add_child(self, score):
+        tmp_node = Node(score, self.score + score, self)
+        self.children.append(tmp_node)
+
+    def add_children(self):
+        self.add_child(4)
+        self.add_child(5)
+        self.add_child(6)
 
 
-a = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-b = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+def create_level(node: Node):
 
-print(func(a, b))
+    if node.score < 21:
+        node.add_children()
 
-# task 2
-
-
-def text_stats(data_text: str):
-    return {
-        'length': len(data_text),
-        'letters': list(set(data_text)),
-        'big letters': data_text.upper(),
-        'small letters': data_text.lower()
-    }
+        for child in node.children:
+            create_level(child)
 
 
-print(text_stats('Lorem ipsum dolor sit amet'))
+def create_digraph(node: Node, dot: Digraph,):
 
-# task 3
+    global node_id
+
+    parent_label = str(node_id)
+    dot.node(parent_label, str(node.score) + ' ' + str(node.value))
+    node_id += 1
+
+    for child in node.children:
+
+        child_label = str(node_id)
+        create_digraph(child, dot)
+        dot.edge(parent_label, child_label)
+
+        node_id += 1
 
 
-def remover(text: str, letter: str):
-    return text.replace(letter, '')
+def estimate_result(node: Node, current_max):
+
+    if node.score > 21 and current_max is True:
+        return -1
+    elif node.score > 21 and current_max is False:
+        return 1
+    elif node.score == 21:
+        return 0
+
+    result_sum = 0
+
+    for child in node.children:
+        result_sum += estimate_result(child, not current_max)
+
+    return result_sum
 
 
-print(remover('Lorem ipsum dolor sit amet', 'i'))
+def min_max(node: Node, current_max=True):
 
-# task 4
+    results = [estimate_result(child, current_max) for child in node.children]
 
+    print(results)
 
-def converter(temperature: float, conversion_type: str):
+    best_result = max(results) if current_max else min(results)
+    best_coin = node.children[results.index(best_result)]
 
-    if conversion_type == 'Fahrenheit':
-        return 9 / 5 * temperature + 32
-    elif conversion_type == 'Kelvin':
-        return temperature + 273
-    elif conversion_type == 'Rankine':
-        return temperature * 1.8 + 491.67
+    best_coin_value = best_coin.value
+    best_coin_score = best_coin.score
+
+    player = 'Protagonist' if current_max else 'Enemy'
+
+    print('{player_type} chooses {coin_value}'.format(player_type=player, coin_value=best_coin_value))
+    print('Current stack:', best_coin_score)
+
+    if best_coin_score == 21:
+        print('Draw !')
+    elif best_coin_score > 21:
+        print(player, 'has lost!')
     else:
-        return 'Given conversion type does not exist.'
+        min_max(best_coin, not current_max)
 
 
-print(converter(1, 'Fahrenheit'))
-print(converter(1, 'Kelvin'))
-print(converter(1, 'Rankine'))
-print(converter(1, 'Rankenheit'))
+# task 1 - create game graph
 
-# task 5
+root = Node()
+create_level(root)
 
+node_id = 0
 
-class Calculator:
+graph = Digraph('gameRun')
+create_digraph(root, graph)
+graph.render('graph.gv', view=False)
 
-    def add(self, number_a, number_b):
-        return number_a + number_b
+# task 2 - implement min-max algorithm
 
-    def difference(self, number_a, number_b):
-        return number_a - number_b
-
-    def multiply(self, number_a, number_b):
-        return number_a * number_b
-
-    def divide(self, number_a, number_b):
-        if number_b != 0:
-            return number_a / number_b
-        else:
-            print('Error - zero division')
-
-# task 6
-
-
-class ScienceCalculator(Calculator):
-
-    def power(self, number_a, number_b):
-        return number_a ** number_b
-
-    def natural_log(self, number_a):
-        return log(number_a, e)
-
-    def log_10(self, number_a):
-        return log(number_a, 10)
-
-# task 7
-
-
-def reverser(text: str):
-    return text[::-1]
-
-
-print(reverser('koteł'))
-
-# task 9
-
-my_file_manager = FileManager('file.txt')
-my_file_manager.update_file('Lorem ipsum dolor sit amet \n')
-my_file_manager.update_file('Lorem ipsum dolor sit amet \n')
-print(my_file_manager.read_file())
-
-# task 10
-
-print(chuck_norris.get_quip_for_name('Kamil'))
-
+min_max(root)
